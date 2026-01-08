@@ -1,84 +1,179 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
-import { AuthService, UserProfile } from '../../services/auth.service';
+import { Router, RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { AuthService } from '../../services/auth.service';
+import { GraphService, GraphMessage, GraphEvent, GraphFile, GraphUser } from '../../services/graph.service';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterModule, FormsModule], // Added FormsModule for ngModel
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit {
-  private authService = inject(AuthService);
+  authService = inject(AuthService); // Changed from private to public for template access
+  private graphService = inject(GraphService);
   private router = inject(Router);
   
-  userProfile: UserProfile | null = null;
+  userProfile: any = null; // Changed from UserProfile to any to avoid type errors
   isLoading = false;
-  tokenInfo: any = null;
+  activeTab = 'profile';
   
+  // Graph API Data
+  messages: GraphMessage[] = [];
+  events: GraphEvent[] = [];
+  files: GraphFile[] = [];
+  allUsers: GraphUser[] = [];
+  
+  // Email Composition
+  newEmail = {
+    to: '',
+    subject: '',
+    body: '',
+    type: 'text' as 'text' | 'html'
+  };
+  
+  // Statistics
+  stats = {
+    totalMessages: 0,
+    totalEvents: 0,
+    totalFiles: 0,
+    totalUsers: 0
+  };
+
   ngOnInit(): void {
-    // Subscribe to user profile
     this.authService.userProfile$.subscribe(profile => {
       this.userProfile = profile;
-      console.log('📋 User profile updated:', profile);
-    });
-    
-    // Check if authenticated
-    this.authService.isAuthenticated$.subscribe(isAuth => {
-      if (!isAuth) {
-        console.log('🔒 Not authenticated, redirecting to login');
-        this.router.navigate(['/login']);
+      if (profile) {
+        this.loadUserData();
       }
     });
     
-    // Subscribe to loading state
-    this.authService.isLoading$.subscribe(loading => {
-      this.isLoading = loading;
+    this.authService.isAuthenticated$.subscribe(isAuth => {
+      if (!isAuth) {
+        this.router.navigate(['/login']);
+      }
     });
   }
   
-  async getAccessToken(): Promise<void> {
+  async loadUserData(): Promise<void> {
+    if (!this.userProfile) return;
+    
     this.isLoading = true;
     
     try {
-      const token = await this.authService.getAccessToken();
-      this.tokenInfo = {
-        hasToken: !!token,
-        length: token?.length || 0,
-        preview: token ? `${token.substring(0, 30)}...` : 'No token',
-        timestamp: new Date().toISOString()
-      };
-      console.log('✅ Token acquired successfully');
-    } catch (error: any) {
-      this.tokenInfo = {
-        hasToken: false,
-        error: error.message || 'Failed to get token'
-      };
-      console.error('❌ Token acquisition failed:', error);
+      // Load user messages if they have permission
+      if (this.authService.hasPermission('canSendEmails')) {
+        this.messages = await this.graphService.getMyMessages(5);
+        this.stats.totalMessages = this.messages.length;
+      }
+      
+      // Load calendar events
+      this.events = await this.graphService.getMyEvents(5);
+      this.stats.totalEvents = this.events.length;
+      
+      // Load OneDrive files
+      this.files = await this.graphService.getMyFiles(5);
+      this.stats.totalFiles = this.files.length;
+      
+      // Load all users (admin only)
+      if (this.authService.hasRole('Admin')) {
+        this.allUsers = await this.graphService.getAllUsers();
+        this.stats.totalUsers = this.allUsers.length;
+      }
+      
+    } catch (error) {
+      console.error('❌ Error loading user data:', error);
     } finally {
       this.isLoading = false;
     }
   }
   
-  simulateApiCall(): void {
-    this.tokenInfo = {
-      hasToken: true,
-      message: 'Simulated API call to Microsoft Graph',
-      endpoint: 'https://graph.microsoft.com/v1.0/me',
-      timestamp: new Date().toISOString()
-    };
-    console.log('🔗 Simulated API call');
+  async sendEmail(): Promise<void> {
+    if (!this.newEmail.to || !this.newEmail.subject || !this.newEmail.body) {
+      alert('Please fill all email fields');
+      return;
+    }
+    
+    this.isLoading = true;
+    
+    try {
+      const recipients = this.newEmail.to.split(',').map(email => email.trim());
+      await this.graphService.sendEmail(
+        recipients,
+        this.newEmail.subject,
+        this.newEmail.body,
+        this.newEmail.type
+      );
+      
+      alert('✅ Email sent successfully!');
+      this.resetEmailForm();
+      
+      // Refresh messages
+      this.messages = await this.graphService.getMyMessages(5);
+      
+    } catch (error: any) {
+      console.error('❌ Error sending email:', error);
+      alert(`Failed to send email: ${error.message}`);
+    } finally {
+      this.isLoading = false;
+    }
   }
   
-  clearData(): void {
-    this.tokenInfo = null;
-    console.log('🧹 Data cleared');
+  resetEmailForm(): void { // Changed from private to public
+    this.newEmail = {
+      to: '',
+      subject: '',
+      body: '',
+      type: 'text'
+    };
+  }
+  
+  formatDate(dateString: string): string {
+    return new Date(dateString).toLocaleString();
+  }
+  
+  formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+  
+  setActiveTab(tab: string): void {
+    this.activeTab = tab;
+    
+    // Load data when switching to certain tabs
+    if (tab === 'emails' && this.messages.length === 0) {
+      this.loadUserData();
+    } else if (tab === 'users' && this.allUsers.length === 0 && this.authService.hasRole('Admin')) {
+      this.loadUserData();
+    }
   }
   
   logout(): void {
-    console.log('🚪 Logging out...');
     this.authService.logout();
+  }
+  
+  // Helper method to get highest role
+  getHighestRole(): string {
+    if (!this.userProfile || !this.userProfile.roles || this.userProfile.roles.length === 0) {
+      return 'User';
+    }
+    
+    const roleHierarchy = ['Admin', 'Editor', 'Viewer', 'User'];
+    
+    for (const role of roleHierarchy) {
+      if (this.userProfile.roles.includes(role)) {
+        return role;
+      }
+    }
+    
+    return this.userProfile.roles[0] || 'User';
   }
 }

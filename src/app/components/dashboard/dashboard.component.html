@@ -1,16 +1,50 @@
-<!-- Navigation -->
+<!-- Navigation Bar -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow">
   <div class="container">
     <a class="navbar-brand d-flex align-items-center" href="#">
       <i class="bi bi-microsoft me-2 fs-4"></i>
       <span class="fw-bold">Azure AD Dashboard</span>
+      <span class="badge bg-light text-primary ms-2" *ngIf="userProfile">
+        {{ userProfile?.getHighestRole?.() || 'User' }}
+      </span>
     </a>
-    
-    <div class="navbar-nav ms-auto">
+
+    <!-- Tabs -->
+    <div class="navbar-nav mx-auto">
+      <a class="nav-link" [class.active]="activeTab === 'profile'" (click)="setActiveTab('profile')" role="button">
+        <i class="bi bi-person me-1"></i> Profile
+      </a>
+
+      <a class="nav-link" [class.active]="activeTab === 'emails'" (click)="setActiveTab('emails')" role="button"
+        *ngIf="authService.hasPermission('canSendEmails')">
+        <i class="bi bi-envelope me-1"></i> Emails
+      </a>
+
+      <a class="nav-link" [class.active]="activeTab === 'calendar'" (click)="setActiveTab('calendar')" role="button">
+        <i class="bi bi-calendar me-1"></i> Calendar
+      </a>
+
+      <a class="nav-link" [class.active]="activeTab === 'files'" (click)="setActiveTab('files')" role="button">
+        <i class="bi bi-folder me-1"></i> Files
+      </a>
+
+      <a class="nav-link" [class.active]="activeTab === 'users'" (click)="setActiveTab('users')" role="button"
+        *ngIf="authService.hasPermission('canManageUsers')">
+        <i class="bi bi-people me-1"></i> Users
+      </a>
+
+      <a class="nav-link" [class.active]="activeTab === 'compose'" (click)="setActiveTab('compose')" role="button"
+        *ngIf="authService.hasPermission('canSendEmails')">
+        <i class="bi bi-send me-1"></i> Compose
+      </a>
+    </div>
+
+    <!-- User Menu -->
+    <div class="navbar-nav">
       <div class="nav-item dropdown">
         <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
-          <div class="avatar bg-light text-primary rounded-circle d-flex align-items-center justify-content-center me-2" 
-               style="width: 36px; height: 36px;">
+          <div class="avatar bg-light text-primary rounded-circle d-flex align-items-center justify-content-center me-2"
+            style="width: 36px; height: 36px;">
             <span class="fw-bold">{{ userProfile?.name?.charAt(0) || 'U' }}</span>
           </div>
           <span>{{ userProfile?.name || 'User' }}</span>
@@ -22,7 +56,14 @@
               {{ userProfile?.name }}
             </h6>
           </li>
-          <li><hr class="dropdown-divider"></li>
+          <li>
+            <div class="dropdown-item">
+              <small class="text-muted">Role: {{ userProfile?.getHighestRole?.() || 'User' }}</small>
+            </div>
+          </li>
+          <li>
+            <hr class="dropdown-divider">
+          </li>
           <li>
             <a class="dropdown-item text-danger" (click)="logout()" role="button">
               <i class="bi bi-box-arrow-right me-2"></i>
@@ -36,177 +77,480 @@
 </nav>
 
 <!-- Main Content -->
-<div class="container py-4">
-  <!-- Welcome Banner -->
-  <div class="alert alert-success mb-4" *ngIf="userProfile">
-    <div class="d-flex align-items-center">
-      <i class="bi bi-check-circle-fill fs-3 me-3"></i>
-      <div>
-        <h4 class="alert-heading mb-1">Welcome, {{ userProfile.name }}! 🎉</h4>
-        <p class="mb-0">You are successfully authenticated with Azure Active Directory.</p>
-      </div>
-    </div>
-  </div>
-  
-  <!-- User Profile Card -->
-  <div class="card border-0 shadow mb-4">
-    <div class="card-header bg-primary text-white">
-      <h4 class="mb-0">
-        <i class="bi bi-person-badge me-2"></i>
-        User Profile Information
-      </h4>
-    </div>
-    <div class="card-body">
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <label class="form-label text-muted small">Full Name</label>
-          <div class="input-group">
-            <span class="input-group-text">
-              <i class="bi bi-person"></i>
-            </span>
-            <input type="text" class="form-control" [value]="userProfile?.name || 'Not available'" readonly>
+<div class="container-fluid py-4">
+  <div class="container">
+
+    <!-- Profile Tab -->
+    <div *ngIf="activeTab === 'profile'" class="tab-content animate-fade-in">
+      <!-- User Profile Card -->
+      <div class="card border-0 shadow mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h4 class="mb-0">
+            <i class="bi bi-person-badge me-2"></i>
+            User Profile
+          </h4>
+          <div class="badge bg-light text-primary">
+            {{ userProfile?.getHighestRole?.() || 'User' }}
           </div>
         </div>
-        
-        <div class="col-md-6 mb-3">
-          <label class="form-label text-muted small">Email Address</label>
-          <div class="input-group">
-            <span class="input-group-text">
-              <i class="bi bi-envelope"></i>
-            </span>
-            <input type="text" class="form-control" [value]="userProfile?.email || 'Not available'" readonly>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label text-muted small">Full Name</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-person"></i></span>
+                  <input type="text" class="form-control" [value]="userProfile?.name || 'Not available'" readonly>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label text-muted small">Email Address</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                  <input type="text" class="form-control" [value]="userProfile?.email || 'Not available'" readonly>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label text-muted small">Job Title</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-briefcase"></i></span>
+                  <input type="text" class="form-control" [value]="userProfile?.jobTitle || 'Not specified'" readonly>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label text-muted small">Assigned Roles</label>
+                <div class="d-flex flex-wrap gap-2">
+                  <span *ngFor="let role of userProfile?.roles" class="badge py-2 px-3" [ngClass]="{
+                          'bg-danger': role.toLowerCase() === 'admin',
+                          'bg-warning': role.toLowerCase() === 'editor',
+                          'bg-info': role.toLowerCase() === 'viewer',
+                          'bg-secondary': role.toLowerCase() === 'user'
+                        }">
+                    <i class="bi bi-shield-check me-1"></i>
+                    {{ role }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label text-muted small">Azure AD Groups</label>
+                <div class="d-flex flex-wrap gap-2">
+                  <span *ngFor="let group of userProfile?.groups" class="badge bg-success py-2 px-3">
+                    <i class="bi bi-people me-1"></i>
+                    {{ group.displayName }}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        
-        <div class="col-md-6 mb-3">
-          <label class="form-label text-muted small">Username</label>
-          <div class="input-group">
-            <span class="input-group-text">
-              <i class="bi bi-at"></i>
-            </span>
-            <input type="text" class="form-control" [value]="userProfile?.username || 'Not available'" readonly>
-          </div>
-        </div>
-        
-        <div class="col-12 mb-3">
-          <label class="form-label text-muted small">Assigned Roles</label>
-          <div class="d-flex flex-wrap gap-2">
-            <span *ngFor="let role of userProfile?.roles" class="badge bg-success py-2 px-3">
-              <i class="bi bi-shield-check me-1"></i>
-              {{ role }}
-            </span>
-            <span *ngIf="!userProfile?.roles?.length" class="badge bg-secondary py-2 px-3">
-              <i class="bi bi-shield-x me-1"></i>
-              No roles assigned
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Token Management Card -->
-  <div class="card border-0 shadow mb-4">
-    <div class="card-header bg-warning text-dark">
-      <h4 class="mb-0">
-        <i class="bi bi-key-fill me-2"></i>
-        Access Token Management
-      </h4>
-    </div>
-    <div class="card-body">
-      <div class="alert alert-info mb-4">
-        <i class="bi bi-info-circle me-2"></i>
-        Access tokens are used to authenticate API requests to Microsoft Graph and other protected resources.
-      </div>
-      
-      <div class="text-center mb-4">
-        <button class="btn btn-warning btn-lg px-5 me-3" (click)="getAccessToken()" [disabled]="isLoading">
-          <i class="bi bi-key me-2"></i>
-          {{ isLoading ? 'Getting Token...' : 'Get Access Token' }}
-        </button>
-        
-        <button class="btn btn-success btn-lg px-5 me-3" (click)="simulateApiCall()">
-          <i class="bi bi-send me-2"></i>
-          Simulate API Call
-        </button>
-        
-        <button class="btn btn-outline-danger btn-lg px-5" (click)="clearData()">
-          <i class="bi bi-trash me-2"></i>
-          Clear Data
-        </button>
-      </div>
-      
-      <!-- Token Display -->
-      <div *ngIf="tokenInfo" class="mt-4">
-        <h5 class="mb-3">Token Information</h5>
-        <div class="card bg-light">
-          <div class="card-body">
+
+          <!-- Permissions Summary -->
+          <!-- Replace the problematic permission display section -->
+          <div class="mt-4">
+            <h5 class="mb-3">Permissions Summary</h5>
             <div class="row">
-              <div class="col-md-6 mb-3">
-                <strong>Status:</strong>
-                <span class="badge ms-2" [ngClass]="tokenInfo.hasToken ? 'bg-success' : 'bg-danger'">
-                  {{ tokenInfo.hasToken ? 'Available' : 'Unavailable' }}
-                </span>
-              </div>
-              <div class="col-md-6 mb-3">
-                <strong>Length:</strong> {{ tokenInfo.length }} characters
-              </div>
-              <div class="col-12 mb-3" *ngIf="tokenInfo.preview">
-                <strong>Preview:</strong>
-                <code class="d-block mt-2 p-2 bg-dark text-light rounded">{{ tokenInfo.preview }}</code>
-              </div>
-              <div class="col-12" *ngIf="tokenInfo.message">
-                <strong>Message:</strong> {{ tokenInfo.message }}
-              </div>
-              <div class="col-12" *ngIf="tokenInfo.error">
-                <strong>Error:</strong> 
-                <span class="text-danger">{{ tokenInfo.error }}</span>
-              </div>
-              <div class="col-12">
-                <strong>Timestamp:</strong> {{ tokenInfo.timestamp | date:'medium' }}
+              <ng-container *ngIf="userProfile?.permissions">
+                <div class="col-md-3 mb-3">
+                  <div class="card border h-100">
+                    <div class="card-body text-center">
+                      <i class="bi" [ngClass]="{
+                 'bi-check-circle-fill text-success': userProfile?.permissions?.canViewDashboard,
+                 'bi-x-circle-fill text-danger': !userProfile?.permissions?.canViewDashboard
+               }" style="font-size: 1.5rem;">
+                      </i>
+                      <div class="mt-2">
+                        <small class="text-muted">View Dashboard</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                  <div class="card border h-100">
+                    <div class="card-body text-center">
+                      <i class="bi" [ngClass]="{
+                 'bi-check-circle-fill text-success': userProfile?.permissions?.canManageUsers,
+                 'bi-x-circle-fill text-danger': !userProfile?.permissions?.canManageUsers
+               }" style="font-size: 1.5rem;">
+                      </i>
+                      <div class="mt-2">
+                        <small class="text-muted">Manage Users</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                  <div class="card border h-100">
+                    <div class="card-body text-center">
+                      <i class="bi" [ngClass]="{
+                 'bi-check-circle-fill text-success': userProfile?.permissions?.canSendEmails,
+                 'bi-x-circle-fill text-danger': !userProfile?.permissions?.canSendEmails
+               }" style="font-size: 1.5rem;">
+                      </i>
+                      <div class="mt-2">
+                        <small class="text-muted">Send Emails</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                  <div class="card border h-100">
+                    <div class="card-body text-center">
+                      <i class="bi" [ngClass]="{
+                 'bi-check-circle-fill text-success': userProfile?.permissions?.canViewReports,
+                 'bi-x-circle-fill text-danger': !userProfile?.permissions?.canViewReports
+               }" style="font-size: 1.5rem;">
+                      </i>
+                      <div class="mt-2">
+                        <small class="text-muted">View Reports</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-3 mb-3">
+                  <div class="card border h-100">
+                    <div class="card-body text-center">
+                      <i class="bi" [ngClass]="{
+                 'bi-check-circle-fill text-success': userProfile?.permissions?.canManageSettings,
+                 'bi-x-circle-fill text-danger': !userProfile?.permissions?.canManageSettings
+               }" style="font-size: 1.5rem;">
+                      </i>
+                      <div class="mt-2">
+                        <small class="text-muted">Manage Settings</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statistics Cards -->
+      <div class="row">
+        <div class="col-md-3 mb-4">
+          <div class="card border-0 shadow h-100">
+            <div class="card-body text-center">
+              <i class="bi bi-envelope text-primary fs-1 mb-3"></i>
+              <h3>{{ stats.totalMessages }}</h3>
+              <p class="text-muted mb-0">Recent Emails</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+          <div class="card border-0 shadow h-100">
+            <div class="card-body text-center">
+              <i class="bi bi-calendar text-success fs-1 mb-3"></i>
+              <h3>{{ stats.totalEvents }}</h3>
+              <p class="text-muted mb-0">Upcoming Events</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+          <div class="card border-0 shadow h-100">
+            <div class="card-body text-center">
+              <i class="bi bi-folder text-warning fs-1 mb-3"></i>
+              <h3>{{ stats.totalFiles }}</h3>
+              <p class="text-muted mb-0">Recent Files</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 mb-4" *ngIf="authService.hasRole('Admin')">
+          <div class="card border-0 shadow h-100">
+            <div class="card-body text-center">
+              <i class="bi bi-people text-info fs-1 mb-3"></i>
+              <h3>{{ stats.totalUsers }}</h3>
+              <p class="text-muted mb-0">Total Users</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Emails Tab -->
+    <div *ngIf="activeTab === 'emails'" class="tab-content animate-fade-in">
+      <div class="card border-0 shadow">
+        <div class="card-header bg-info text-white">
+          <h4 class="mb-0">
+            <i class="bi bi-envelope me-2"></i>
+            Recent Emails
+          </h4>
+        </div>
+        <div class="card-body">
+          <div *ngIf="isLoading" class="text-center py-5">
+            <div class="spinner-border text-info" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+
+          <div *ngIf="!isLoading && messages.length === 0" class="text-center py-5">
+            <i class="bi bi-envelope-x fs-1 text-muted mb-3"></i>
+            <p class="text-muted">No emails found</p>
+          </div>
+
+          <div *ngIf="!isLoading && messages.length > 0" class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>From</th>
+                  <th>Subject</th>
+                  <th>Received</th>
+                  <th>Preview</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let message of messages">
+                  <td>{{ message.from?.emailAddress?.name || 'Unknown' }}</td>
+                  <td>{{ message.subject || 'No Subject' }}</td>
+                  <td>{{ formatDate(message.receivedDateTime) }}</td>
+                  <td class="text-truncate" style="max-width: 200px;">
+                    {{ message.bodyPreview || 'No preview' }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Calendar Tab -->
+    <div *ngIf="activeTab === 'calendar'" class="tab-content animate-fade-in">
+      <div class="card border-0 shadow">
+        <div class="card-header bg-success text-white">
+          <h4 class="mb-0">
+            <i class="bi bi-calendar me-2"></i>
+            Upcoming Events
+          </h4>
+        </div>
+        <div class="card-body">
+          <div *ngIf="isLoading" class="text-center py-5">
+            <div class="spinner-border text-success" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+
+          <div *ngIf="!isLoading && events.length === 0" class="text-center py-5">
+            <i class="bi bi-calendar-x fs-1 text-muted mb-3"></i>
+            <p class="text-muted">No upcoming events</p>
+          </div>
+
+          <div *ngIf="!isLoading && events.length > 0" class="row">
+            <div class="col-md-6 mb-3" *ngFor="let event of events">
+              <div class="card border h-100">
+                <div class="card-body">
+                  <h5 class="card-title">{{ event.subject || 'No Title' }}</h5>
+                  <p class="card-text">
+                    <i class="bi bi-clock me-1"></i>
+                    {{ formatDate(event.start.dateTime) }} - {{ formatDate(event.end.dateTime) }}
+                  </p>
+                  <p class="card-text">
+                    <i class="bi bi-person me-1"></i>
+                    {{ event.organizer?.emailAddress?.name || 'Unknown' }}
+                  </p>
+                  <span *ngIf="event.isOnlineMeeting" class="badge bg-primary">
+                    <i class="bi bi-camera-video me-1"></i> Online Meeting
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
-      <!-- Loading Spinner -->
-      <div *ngIf="isLoading" class="text-center mt-4">
-        <div class="spinner-border text-warning" style="width: 3rem; height: 3rem;" role="status">
-          <span class="visually-hidden">Loading...</span>
+    </div>
+
+    <!-- Files Tab -->
+    <div *ngIf="activeTab === 'files'" class="tab-content animate-fade-in">
+      <div class="card border-0 shadow">
+        <div class="card-header bg-warning text-dark">
+          <h4 class="mb-0">
+            <i class="bi bi-folder me-2"></i>
+            Recent Files
+          </h4>
         </div>
-        <p class="mt-3 text-muted">Acquiring token silently from Azure AD...</p>
+        <div class="card-body">
+          <div *ngIf="isLoading" class="text-center py-5">
+            <div class="spinner-border text-warning" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+
+          <div *ngIf="!isLoading && files.length === 0" class="text-center py-5">
+            <i class="bi bi-folder-x fs-1 text-muted mb-3"></i>
+            <p class="text-muted">No files found</p>
+          </div>
+
+          <div *ngIf="!isLoading && files.length > 0" class="row">
+            <div class="col-md-4 mb-3" *ngFor="let file of files">
+              <div class="card border h-100">
+                <div class="card-body">
+                  <div class="d-flex align-items-center mb-3">
+                    <i class="bi" [ngClass]="{
+                         'bi-file-earmark-text': !file.folder,
+                         'bi-folder': file.folder
+                       }" style="font-size: 2rem;">
+                    </i>
+                    <div class="ms-3">
+                      <h6 class="mb-0">{{ file.name }}</h6>
+                      <small class="text-muted">{{ formatFileSize(file.size) }}</small>
+                    </div>
+                  </div>
+                  <p class="card-text">
+                    <i class="bi bi-calendar me-1"></i>
+                    Modified: {{ formatDate(file.lastModifiedDateTime) }}
+                  </p>
+                  <a [href]="file.webUrl" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Open
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-  
-  <!-- Features Card -->
-  <div class="row">
-    <div class="col-md-4 mb-4">
-      <div class="card h-100 border-0 shadow">
-        <div class="card-body text-center">
-          <i class="bi bi-shield-check text-success fs-1 mb-3"></i>
-          <h5 class="card-title">Secure</h5>
-          <p class="card-text">Enterprise-grade security with Azure AD</p>
+
+    <!-- Users Tab (Admin Only) -->
+    <div *ngIf="activeTab === 'users'" class="tab-content animate-fade-in">
+      <div class="card border-0 shadow">
+        <div class="card-header bg-danger text-white">
+          <h4 class="mb-0">
+            <i class="bi bi-people me-2"></i>
+            User Management (Admin Only)
+          </h4>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle me-2"></i>
+            This section is only visible to users with Admin role.
+          </div>
+
+          <div *ngIf="isLoading" class="text-center py-5">
+            <div class="spinner-border text-danger" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+
+          <div *ngIf="!isLoading && allUsers.length === 0" class="text-center py-5">
+            <i class="bi bi-people fs-1 text-muted mb-3"></i>
+            <p class="text-muted">No users found or insufficient permissions</p>
+          </div>
+
+          <div *ngIf="!isLoading && allUsers.length > 0" class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Job Title</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let user of allUsers">
+                  <td>{{ user.displayName || 'Unknown' }}</td>
+                  <td>{{ user.mail || user.userPrincipalName }}</td>
+                  <td>{{ user.jobTitle || 'Not specified' }}</td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-primary me-2">
+                      <i class="bi bi-eye"></i> View
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning">
+                      <i class="bi bi-pencil"></i> Edit
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
-    <div class="col-md-4 mb-4">
-      <div class="card h-100 border-0 shadow">
-        <div class="card-body text-center">
-          <i class="bi bi-lightning-charge text-warning fs-1 mb-3"></i>
-          <h5 class="card-title">Fast</h5>
-          <p class="card-text">Quick authentication with single sign-on</p>
+
+    <!-- Compose Email Tab -->
+    <div *ngIf="activeTab === 'compose'" class="tab-content animate-fade-in">
+      <div class="card border-0 shadow">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">
+            <i class="bi bi-send me-2"></i>
+            Compose Email
+          </h4>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle me-2"></i>
+            Send emails using Microsoft Graph API. Multiple recipients separated by commas.
+          </div>
+
+          <form (ngSubmit)="sendEmail()" #emailForm="ngForm">
+            <div class="mb-3">
+              <label for="to" class="form-label">To</label>
+              <input type="text" class="form-control" id="to" [(ngModel)]="newEmail.to" name="to"
+                placeholder="recipient1@domain.com, recipient2@domain.com" required>
+              <div class="form-text">Separate multiple emails with commas</div>
+            </div>
+
+            <div class="mb-3">
+              <label for="subject" class="form-label">Subject</label>
+              <input type="text" class="form-control" id="subject" [(ngModel)]="newEmail.subject" name="subject"
+                placeholder="Email subject" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="body" class="form-label">Message</label>
+              <textarea class="form-control" id="body" [(ngModel)]="newEmail.body" name="body" rows="6"
+                placeholder="Type your message here..." required></textarea>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Format</label>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="type" id="typeText" value="text"
+                  [(ngModel)]="newEmail.type" checked>
+                <label class="form-check-label" for="typeText">
+                  Plain Text
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="type" id="typeHtml" value="html"
+                  [(ngModel)]="newEmail.type">
+                <label class="form-check-label" for="typeHtml">
+                  HTML
+                </label>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <button type="button" class="btn btn-secondary" (click)="resetEmailForm()">
+                <i class="bi bi-x-circle me-1"></i> Clear
+              </button>
+
+              <button type="submit" class="btn btn-primary" [disabled]="isLoading || !emailForm.form.valid">
+                <i class="bi bi-send me-1"></i>
+                {{ isLoading ? 'Sending...' : 'Send Email' }}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
-    <div class="col-md-4 mb-4">
-      <div class="card h-100 border-0 shadow">
-        <div class="card-body text-center">
-          <i class="bi bi-graph-up text-primary fs-1 mb-3"></i>
-          <h5 class="card-title">API Ready</h5>
-          <p class="card-text">Access Microsoft Graph API securely</p>
-        </div>
+
+    <!-- Loading Overlay -->
+    <div *ngIf="isLoading && activeTab !== 'compose'" class="loading-overlay">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
       </div>
     </div>
   </div>
@@ -219,22 +563,18 @@
       <div class="col-md-6">
         <h5>
           <i class="bi bi-microsoft me-2"></i>
-          Azure AD Authentication Demo
+          Azure AD + Graph API Demo
         </h5>
-        <p class="mb-0 text-muted">Built with Angular 20+ and Bootstrap 5</p>
+        <p class="mb-0 text-muted">Built with Angular 20+, Bootstrap 5, and Microsoft Graph API</p>
       </div>
       <div class="col-md-6 text-md-end">
         <p class="mb-1">
-          <a href="https://learn.microsoft.com/en-us/azure/active-directory/develop/" 
-             target="_blank" 
-             class="text-decoration-none text-light">
-            <i class="bi bi-book me-1"></i>
-            Microsoft Documentation
-          </a>
+          <span class="badge bg-info me-2">Role: {{ userProfile?.getHighestRole?.() || 'User' }}</span>
+          <span class="badge bg-success">Permissions: {{ userProfile?.roles?.length || 0 }}</span>
         </p>
         <p class="mb-0 text-muted small">
-          <i class="bi bi-info-circle me-1"></i>
-          Check browser console for detailed logs
+          <i class="bi bi-shield-check me-1"></i>
+          Role-Based Access Control Enabled
         </p>
       </div>
     </div>

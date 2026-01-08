@@ -18,6 +18,8 @@
     "@angular/router": "^20.0.0",
     "@azure/msal-angular": "^3.1.0",
     "@azure/msal-browser": "^3.30.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@microsoft/microsoft-graph-types": "^2.43.1",
     "@popperjs/core": "^2.11.8",
     "bootstrap": "^5.3.8",
     "bootstrap-icons": "^1.13.1",

@@ -1,0 +1,355 @@
+<div class="reports-container py-4">
+  <div class="container">
+    
+    <!-- Header -->
+    <div class="card border-0 shadow mb-4">
+      <div class="card-header bg-primary text-white">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0">
+              <i class="bi bi-bar-chart me-2"></i>
+              Analytics & Reports Dashboard
+            </h4>
+            <small>Role: {{ getCurrentUserRole() }}</small>
+          </div>
+          <div class="badge bg-light text-primary">
+            <i class="bi bi-eye me-1"></i>
+            View Only
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="card border-0 shadow mb-4">
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-md-6">
+            <div class="input-group">
+              <span class="input-group-text">
+                <i class="bi bi-search"></i>
+              </span>
+              <input type="text" 
+                     class="form-control" 
+                     placeholder="Search reports..."
+                     [(ngModel)]="searchQuery"
+                     (input)="filterReports()">
+            </div>
+          </div>
+          
+          <div class="col-md-6 mt-3 mt-md-0">
+            <div class="d-flex flex-wrap gap-2">
+              <button *ngFor="let cat of categories" 
+                      class="btn filter-btn" 
+                      [class.active]="selectedCategory === cat.id"
+                      (click)="selectedCategory = cat.id; filterReports()">
+                <i class="bi {{ cat.icon }} me-1"></i>
+                {{ cat.name }}
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Status Filters -->
+        <div class="mt-3">
+          <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-outline-secondary filter-btn" 
+                    [class.active]="selectedStatus === 'all'"
+                    (click)="selectedStatus = 'all'; filterReports()">
+              All Status
+            </button>
+            <button class="btn btn-outline-success filter-btn" 
+                    [class.active]="selectedStatus === 'success'"
+                    (click)="selectedStatus = 'success'; filterReports()">
+              <i class="bi bi-check-circle me-1"></i> Success
+            </button>
+            <button class="btn btn-outline-warning filter-btn" 
+                    [class.active]="selectedStatus === 'pending'"
+                    (click)="selectedStatus = 'pending'; filterReports()">
+              <i class="bi bi-clock me-1"></i> Pending
+            </button>
+            <button class="btn btn-outline-danger filter-btn" 
+                    [class.active]="selectedStatus === 'failed'"
+                    (click)="selectedStatus = 'failed'; filterReports()">
+              <i class="bi bi-exclamation-triangle me-1"></i> Failed
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="row">
+      <!-- Report List -->
+      <div class="col-lg-4">
+        <div class="card border-0 shadow mb-4">
+          <div class="card-header bg-info text-white">
+            <h5 class="mb-0">
+              <i class="bi bi-list-ul me-2"></i>
+              Available Reports
+              <span class="badge bg-light text-info ms-2">{{ filteredReports.length }}</span>
+            </h5>
+          </div>
+          <div class="card-body p-0">
+            <div class="report-list" style="max-height: 600px; overflow-y: auto;">
+              <div *ngFor="let report of filteredReports" 
+                   class="report-card p-3 border-bottom"
+                   [class.selected]="selectedReport?.id === report.id"
+                   (click)="selectReport(report)">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <h6 class="mb-0">{{ report.title }}</h6>
+                  <span class="badge" [ngClass]="getStatusBadgeClass(report.status)">
+                    {{ report.status }}
+                  </span>
+                </div>
+                
+                <p class="small text-muted mb-2">{{ report.description }}</p>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="badge" [ngClass]="getCategoryBadgeClass(report.category)">
+                    {{ report.category }}
+                  </span>
+                  <small class="text-muted">
+                    {{ report.frequency }} • {{ formatDate(report.lastRun) }}
+                  </small>
+                </div>
+              </div>
+              
+              <div *ngIf="filteredReports.length === 0" class="text-center py-5">
+                <i class="bi bi-file-earmark-x fs-1 text-muted mb-3"></i>
+                <p class="text-muted">No reports found</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Report Details -->
+      <div class="col-lg-8">
+        <div *ngIf="!selectedReport" class="text-center py-5">
+          <div class="card border-0 shadow">
+            <div class="card-body py-5">
+              <i class="bi bi-graph-up fs-1 text-muted mb-3"></i>
+              <h4>Select a Report</h4>
+              <p class="text-muted">Choose a report from the list to view details and analytics</p>
+            </div>
+          </div>
+        </div>
+        
+        <div *ngIf="selectedReport" class="tab-content animate-fade-in">
+          <!-- Report Header -->
+          <div class="card border-0 shadow mb-4">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-0">{{ selectedReport.title }}</h5>
+                <small>{{ selectedReport.description }}</small>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-light" 
+                        (click)="scheduleReport()"
+                        [disabled]="isGenerating">
+                  <i class="bi bi-clock me-1"></i> Schedule
+                </button>
+                <button class="btn btn-sm btn-light" 
+                        (click)="generateReport()"
+                        [disabled]="isGenerating">
+                  <i class="bi bi-play-circle me-1"></i>
+                  {{ isGenerating ? 'Generating...' : 'Generate' }}
+                </button>
+              </div>
+            </div>
+            
+            <div class="card-body">
+              <!-- Report Info -->
+              <div class="row mb-4">
+                <div class="col-md-4">
+                  <div class="card border h-100">
+                    <div class="card-body text-center">
+                      <i class="bi bi-calendar text-primary fs-3 mb-2"></i>
+                      <h6>Frequency</h6>
+                      <span class="badge bg-primary">{{ selectedReport.frequency }}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-md-4">
+                  <div class="card border h-100">
+                    <div class="card-body text-center">
+                      <i class="bi bi-clock-history text-info fs-3 mb-2"></i>
+                      <h6>Last Run</h6>
+                      <small>{{ formatDate(selectedReport.lastRun) }}</small>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="col-md-4">
+                  <div class="card border h-100">
+                    <div class="card-body text-center">
+                      <i class="bi bi-check2-circle text-success fs-3 mb-2"></i>
+                      <h6>Status</h6>
+                      <span class="badge" [ngClass]="getStatusBadgeClass(selectedReport.status)">
+                        {{ selectedReport.status }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Date Range Picker -->
+              <div class="date-range-picker mb-4">
+                <h6><i class="bi bi-calendar-range me-2"></i>Date Range</h6>
+                <div class="row">
+                  <div class="col-md-6">
+                    <label class="form-label small">From</label>
+                    <input type="date" 
+                           class="form-control" 
+                           [(ngModel)]="dateRange.start">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label small">To</label>
+                    <input type="date" 
+                           class="form-control" 
+                           [(ngModel)]="dateRange.end">
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Chart Type Selector -->
+              <div class="mb-4">
+                <h6><i class="bi bi-graph-up me-2"></i>Chart Type</h6>
+                <div class="d-flex flex-wrap gap-2">
+                  <button *ngFor="let type of chartTypes" 
+                          class="btn btn-outline-secondary"
+                          [class.active]="selectedChartType === type"
+                          (click)="selectedChartType = type">
+                    {{ type | titlecase }}
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Chart Display -->
+              <!-- Chart Display -->
+<div class="chart-container mb-4">
+  <div *ngIf="!reportData" class="text-center py-5">
+    <i class="bi bi-bar-chart fs-1 text-muted mb-3"></i>
+    <p class="text-muted">No data available for this report</p>
+    <button class="btn btn-primary" (click)="generateReport()">
+      Generate Report Data
+    </button>
+  </div>
+  
+  <div *ngIf="reportData" class="chart-placeholder">
+    <div class="text-center mb-4">
+      <h5>Report Data Visualization</h5>
+      <small class="text-muted">Chart Type: {{ selectedChartType | titlecase }}</small>
+    </div>
+    
+    <!-- Simple HTML chart simulation -->
+    <div class="mb-4">
+      <div class="d-flex align-items-end mb-2" 
+           style="height: 200px; border-left: 1px solid #dee2e6; border-bottom: 1px solid #dee2e6;">
+        <div *ngFor="let data of reportData.datasets[0].data; let i = index" 
+             class="mx-2 d-flex flex-column align-items-center"
+             style="height: 100%;">
+          <!-- Fixed: Use helper method to calculate height -->
+          <div [style.height.%]="getChartHeight(data, reportData.datasets[0].data)" 
+               [style.backgroundColor]="getBackgroundColor(i)" 
+               style="width: 30px; border-radius: 4px 4px 0 0;">
+          </div>
+          <small class="mt-2">{{ reportData.labels[i] }}</small>
+          <small class="text-muted">{{ data }}</small>
+        </div>
+      </div>
+    </div>
+    
+    <div class="row">
+      <div class="col-md-6">
+        <h6>Data Summary</h6>
+        <ul class="list-group">
+          <li class="list-group-item">
+            <strong>{{ reportData.datasets[0].label }}:</strong>
+            {{ reportData.datasets[0].data.join(', ') }}
+          </li>
+        </ul>
+      </div>
+      <div class="col-md-6">
+        <h6>Statistics</h6>
+        <div class="list-group">
+          <div class="list-group-item">
+            <strong>Total:</strong> {{ calculateTotal(reportData.datasets[0].data) }}
+          </div>
+          <div class="list-group-item">
+            <strong>Average:</strong> {{ calculateAverage(reportData.datasets[0].data) }}
+          </div>
+          <div class="list-group-item">
+            <strong>Max:</strong> {{ calculateMax(reportData.datasets[0].data) }}
+          </div>
+          <div class="list-group-item">
+            <strong>Min:</strong> {{ calculateMin(reportData.datasets[0].data) }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+              
+              <!-- Export Options -->
+              <div class="card border">
+                <div class="card-header bg-light">
+                  <h6 class="mb-0">
+                    <i class="bi bi-download me-2"></i>
+                    Export Options
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div class="d-flex flex-wrap gap-3">
+                    <button class="btn btn-outline-primary" 
+                            (click)="exportReport('pdf')"
+                            [disabled]="isExporting || !reportData">
+                      <i class="bi bi-file-earmark-pdf me-1"></i>
+                      {{ isExporting ? 'Exporting...' : 'PDF' }}
+                    </button>
+                    <button class="btn btn-outline-success" 
+                            (click)="exportReport('excel')"
+                            [disabled]="isExporting || !reportData">
+                      <i class="bi bi-file-earmark-excel me-1"></i>
+                      {{ isExporting ? 'Exporting...' : 'Excel' }}
+                    </button>
+                    <button class="btn btn-outline-info" 
+                            (click)="exportReport('csv')"
+                            [disabled]="isExporting || !reportData">
+                      <i class="bi bi-file-earmark-text me-1"></i>
+                      {{ isExporting ? 'Exporting...' : 'CSV' }}
+                    </button>
+                  </div>
+                  <small class="text-muted mt-2 d-block">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Reports are exported in JSON format containing all data and metadata.
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer class="bg-dark text-white py-3">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-6">
+        <small>
+          <i class="bi bi-bar-chart me-1"></i>
+          Reports Dashboard • {{ today | date:'medium' }}
+        </small>
+      </div>
+      <div class="col-md-6 text-md-end">
+        <small class="text-muted">
+          Access Level: {{ getCurrentUserRole() }} • Reports are updated {{ selectedReport?.frequency || 'daily' }}
+        </small>
+      </div>
+    </div>
+  </div>
+</footer>
